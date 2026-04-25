@@ -22,7 +22,8 @@ export default async (req, context) => {
       }],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 1500
+        maxOutputTokens: 1500,
+        responseMimeType: 'application/json'
       }
     };
 

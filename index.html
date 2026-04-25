@@ -276,7 +276,15 @@ async function generate() {
         ? '請辨識照片中所有DVD（封面或側面書背，文字可能旋轉），依格式輸出JSON。'
         : '請辨識照片中所有漫畫（封面或側面書背，文字可能旋轉），依格式輸出JSON。';
       const text = await callAPI(b64, sys, usr);
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      // 清理 Gemini 回傳的文字，取出 JSON 部分
+      let cleanText = text.replace(/```json|```/g, '').trim();
+      // 找到第一個 { 和最後一個 } 之間的內容
+      const jsonStart = cleanText.indexOf('{');
+      const jsonEnd = cleanText.lastIndexOf('}');
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        cleanText = cleanText.substring(jsonStart, jsonEnd + 1);
+      }
+      const parsed = JSON.parse(cleanText);
       if (mode === 'movie') {
         (parsed.movies || [parsed]).forEach(m => renderMovie(m, imgUrl));
       } else {
