@@ -240,21 +240,17 @@ async function callAPI(b64, sysprompt, userprompt) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1500,
-          system: sysprompt,
-          messages: [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
-            { type: 'text', text: userprompt }
-          ]}]
+          systemPrompt: sysprompt,
+          userPrompt: userprompt,
+          imageBase64: b64
         })
       });
       const data = await resp.json();
       if (data.error) {
         if (attempt < 3) continue;
-        throw new Error(data.error.message || data.error);
+        throw new Error(data.error);
       }
-      return data;
+      return data.text;
     } catch(e) {
       if (attempt === 3) throw e;
     }
@@ -279,8 +275,7 @@ async function generate() {
       const usr = mode === 'movie'
         ? '請辨識照片中所有DVD（封面或側面書背，文字可能旋轉），依格式輸出JSON。'
         : '請辨識照片中所有漫畫（封面或側面書背，文字可能旋轉），依格式輸出JSON。';
-      const data = await callAPI(b64, sys, usr);
-      const text = (data.content || []).map(c => c.text || '').join('');
+      const text = await callAPI(b64, sys, usr);
       const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
       if (mode === 'movie') {
         (parsed.movies || [parsed]).forEach(m => renderMovie(m, imgUrl));
