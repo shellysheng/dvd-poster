@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>📀 新片新書貼文產生器</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  background: #F2F0EB; color: #1a1a1a; min-height: 100vh; padding-bottom: 3rem;
+}
+header { background: #1a1a1a; color: #fff; padding: 1.1rem 1.25rem 0.9rem; }
+header h1 { font-size: 19px; font-weight: 600; }
+header p { font-size: 12px; color: #999; margin-top: 2px; }
+.wrap { max-width: 520px; margin: 0 auto; padding: 1.1rem; }
+
+.card { background: #fff; border-radius: 14px; padding: 1.1rem; margin-bottom: 0.9rem; border: 1px solid #e4e2dc; }
+.card-title { font-size: 14px; font-weight: 600; margin-bottom: 0.75rem; }
+
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mode-btn {
+  border: 1.5px solid #ddd; border-radius: 10px; padding: 10px 8px;
+  font-size: 13px; font-weight: 500; cursor: pointer; background: #fafafa;
+  color: #666; text-align: center; transition: all 0.15s;
+}
+.mode-btn span { font-size: 20px; display: block; margin-bottom: 3px; }
+.mode-btn.active { border-color: #1a1a1a; background: #1a1a1a; color: #fff; }
+.mode-desc { font-size: 11px; color: #aaa; margin-top: 7px; line-height: 1.5; }
+
+.upload-zone {
+  border: 1.5px dashed #ccc; border-radius: 12px; padding: 1.4rem 1rem;
+  text-align: center; cursor: pointer; background: #fafaf8;
+  transition: all 0.15s; margin-bottom: 0.85rem;
+}
+.upload-zone:active { background: #f0eeea; }
+.upload-zone .big { font-size: 26px; margin-bottom: 6px; }
+.upload-zone .label { font-size: 14px; font-weight: 500; color: #444; }
+.upload-zone .hint { font-size: 11px; color: #bbb; margin-top: 3px; }
+
+.preview-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 0.85rem; }
+.prev-thumb {
+  position: relative; width: 72px; height: 96px;
+  border-radius: 8px; overflow: hidden; border: 1px solid #e4e2dc;
+}
+.prev-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.prev-thumb .rm {
+  position: absolute; top: 3px; right: 3px;
+  background: rgba(0,0,0,0.6); color: #fff; border: none;
+  border-radius: 50%; width: 20px; height: 20px; font-size: 11px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+
+.btn-go {
+  width: 100%; background: #1a1a1a; color: #fff; border: none;
+  border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 600;
+  cursor: pointer; transition: opacity 0.2s;
+}
+.btn-go:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn-go:active { opacity: 0.8; }
+
+.loading {
+  background: #fff; border-radius: 14px; border: 1px solid #e4e2dc;
+  padding: 1.8rem 1rem; text-align: center; margin-bottom: 0.9rem; display: none;
+}
+.loading.show { display: block; }
+.spin {
+  width: 32px; height: 32px; border: 2.5px solid #eee; border-top-color: #1a1a1a;
+  border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading p { font-size: 13px; color: #666; }
+.loading small { font-size: 11px; color: #bbb; margin-top: 3px; display: block; }
+
+.err {
+  background: #FFF0F0; border: 1px solid #f5c0c0; border-radius: 10px;
+  padding: 10px 12px; font-size: 13px; color: #A32D2D;
+  margin-bottom: 0.9rem; display: none; line-height: 1.5;
+}
+.err.show { display: block; }
+
+.result-card { background: #fff; border-radius: 14px; border: 1px solid #e4e2dc; margin-bottom: 1rem; overflow: hidden; }
+.result-img { width: 100%; display: block; max-height: 300px; object-fit: cover; }
+.result-body { padding: 0.9rem 1rem 1rem; }
+.result-badge {
+  display: inline-block; border-radius: 20px; padding: 2px 10px;
+  font-size: 11px; font-weight: 600; margin-bottom: 8px;
+  background: #EEF5FF; color: #2060B0;
+}
+.result-badge.manga { background: #FFF3E0; color: #8B5000; }
+.post-box {
+  background: #fafaf8; border: 1px solid #eee; border-radius: 10px;
+  padding: 10px 12px; font-size: 13px; line-height: 1.85; color: #1a1a1a;
+  white-space: pre-wrap; word-break: break-word; margin-bottom: 10px;
+}
+.manga-item { margin-bottom: 8px; }
+.manga-item-no { font-size: 10px; font-weight: 700; color: #8B5000; margin-bottom: 3px; letter-spacing: 0.5px; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.btn-act {
+  border: 1px solid #ddd; border-radius: 10px; padding: 10px;
+  font-size: 13px; font-weight: 500; cursor: pointer; background: #fff;
+  color: #1a1a1a; text-align: center; text-decoration: none;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  transition: all 0.15s;
+}
+.btn-act:active { background: #f5f4f0; }
+.btn-act.ok { color: #0a6e48; border-color: #0a6e48; background: #e6f5ee; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📀 新片新書貼文產生器</h1>
+  <p>上傳照片，自動生成 Facebook 貼文</p>
+</header>
+<div class="wrap">
+  <div class="card">
+    <div class="card-title">這次要發什麼？</div>
+    <div class="mode-grid">
+      <div class="mode-btn active" id="mMovie" onclick="setMode('movie')"><span>🎬</span>電影 DVD</div>
+      <div class="mode-btn" id="mManga" onclick="setMode('manga')"><span>📚</span>漫畫新書</div>
+    </div>
+    <div class="mode-desc" id="mDesc">拍 DVD 側面或封面皆可，一張可含多片。</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" id="uploadTitle">📸 上傳 DVD 照片</div>
+    <div class="upload-zone" onclick="document.getElementById('fi').click()">
+      <div class="big">📷</div>
+      <div class="label">點這裡拍照或選照片</div>
+      <div class="hint" id="uploadHint">可一次選多張</div>
+    </div>
+    <input type="file" id="fi" accept="image/*" multiple style="display:none">
+    <div class="preview-row" id="prevRow"></div>
+    <button class="btn-go" id="goBtn" disabled onclick="generate()">✨ 產生 Facebook 貼文</button>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spin"></div>
+    <p id="loadTxt">AI 正在辨識中...</p>
+    <small id="loadSub"></small>
+  </div>
+  <div class="err" id="errBox"></div>
+  <div id="results"></div>
+</div>
+
+<script>
+let mode = 'movie';
+const files = [];
+
+document.getElementById('fi').addEventListener('change', e => {
+  Array.from(e.target.files).forEach(addFile);
+  e.target.value = '';
+});
+
+function addFile(f) {
+  const idx = files.length;
+  files.push(f);
+  const r = new FileReader();
+  r.onload = ev => {
+    const d = document.createElement('div');
+    d.className = 'prev-thumb'; d.id = 'p' + idx;
+    d.innerHTML = '<img src="' + ev.target.result + '"><button class="rm" onclick="rmFile(' + idx + ')">✕</button>';
+    document.getElementById('prevRow').appendChild(d);
+  };
+  r.readAsDataURL(f);
+  document.getElementById('goBtn').disabled = false;
+}
+
+function rmFile(i) {
+  files[i] = null;
+  const el = document.getElementById('p' + i);
+  if (el) el.remove();
+  document.getElementById('goBtn').disabled = !files.some(Boolean);
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('mMovie').classList.toggle('active', m === 'movie');
+  document.getElementById('mManga').classList.toggle('active', m === 'manga');
+  if (m === 'movie') {
+    document.getElementById('mDesc').textContent = '拍 DVD 側面或封面皆可，一張可含多片。';
+    document.getElementById('uploadTitle').textContent = '📸 上傳 DVD 照片';
+    document.getElementById('uploadHint').textContent = '可一次選多張';
+  } else {
+    document.getElementById('mDesc').textContent = '一張照片裡可有多本漫畫，AI 全部辨識合併成一篇。';
+    document.getElementById('uploadTitle').textContent = '📸 上傳漫畫照片';
+    document.getElementById('uploadHint').textContent = '一張可含多本漫畫';
+  }
+}
+
+async function resizeToBase64(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onerror = rej;
+    reader.onload = ev => {
+      const img = new Image();
+      img.onerror = rej;
+      img.onload = () => {
+        const MAX = 1024;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        res(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+const MOVIE_SYS = `你是台灣DVD出租店的專業文案編輯。
+照片可能是DVD正面封面或側面書背，文字可能旋轉90/180度，請仔細辨識所有文字。
+一張照片裡可能有多片DVD，請全部辨識。
+只輸出純JSON，不加markdown符號：
+{"movies":[{"zhName":"中文片名","enName":"英文片名","year":"年份","post":"完整FB貼文"}]}
+
+每部電影貼文格式：
+新片到貨～
+【#中文片名】#英文片名
+
+2~4句繁體中文：描述劇情重點，提及知名演員或獎項，結尾吸引人的話
+風格親切自然，吸引租片客人。`;
+
+const MANGA_SYS = `你是台灣漫畫出租店的專業文案編輯。
+照片可能是漫畫封面或側面書背，文字可能旋轉，請仔細辨識。
+一張照片可能有多本漫畫，請全部辨識。
+只輸出純JSON，不加markdown符號：
+{"items":[{"zhName":"漫畫名稱","volume":"第X集","summary":"2~3句繁體中文本集劇情重點"}]}`;
+
+async function callAPI(b64, sysprompt, userprompt) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    if (attempt > 1) await new Promise(r => setTimeout(r, 2000));
+    try {
+      const resp = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1500,
+          system: sysprompt,
+          messages: [{ role: 'user', content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
+            { type: 'text', text: userprompt }
+          ]}]
+        })
+      });
+      const data = await resp.json();
+      if (data.error) {
+        if (attempt < 3) continue;
+        throw new Error(data.error.message || data.error);
+      }
+      return data;
+    } catch(e) {
+      if (attempt === 3) throw e;
+    }
+  }
+}
+
+async function generate() {
+  const active = files.filter(Boolean);
+  if (!active.length) return;
+  document.getElementById('errBox').classList.remove('show');
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('goBtn').disabled = true;
+  document.getElementById('loading').classList.add('show');
+
+  for (let i = 0; i < active.length; i++) {
+    document.getElementById('loadTxt').textContent = mode === 'movie' ? 'AI 正在辨識電影...' : 'AI 正在辨識漫畫...';
+    document.getElementById('loadSub').textContent = '第 ' + (i + 1) + ' / ' + active.length + ' 張';
+    try {
+      const b64 = await resizeToBase64(active[i]);
+      const imgUrl = URL.createObjectURL(active[i]);
+      const sys = mode === 'movie' ? MOVIE_SYS : MANGA_SYS;
+      const usr = mode === 'movie'
+        ? '請辨識照片中所有DVD（封面或側面書背，文字可能旋轉），依格式輸出JSON。'
+        : '請辨識照片中所有漫畫（封面或側面書背，文字可能旋轉），依格式輸出JSON。';
+      const data = await callAPI(b64, sys, usr);
+      const text = (data.content || []).map(c => c.text || '').join('');
+      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      if (mode === 'movie') {
+        (parsed.movies || [parsed]).forEach(m => renderMovie(m, imgUrl));
+      } else {
+        renderManga(parsed, imgUrl);
+      }
+    } catch(e) {
+      showErr('第 ' + (i + 1) + ' 張失敗：' + e.message);
+    }
+  }
+  document.getElementById('loading').classList.remove('show');
+  document.getElementById('goBtn').disabled = false;
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function attr(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderMovie(d, img) {
+  const post = d.post || '';
+  const card = document.createElement('div');
+  card.className = 'result-card';
+  card.innerHTML =
+    '<img class="result-img" src="' + img + '">' +
+    '<div class="result-body">' +
+      '<span class="result-badge">🎬 ' + esc(d.zhName||'') + (d.year ? ' · ' + esc(d.year) : '') + '</span>' +
+      '<div class="post-box">' + esc(post) + '</div>' +
+      '<div class="actions">' +
+        '<button class="btn-act" data-copy="' + attr(post) + '" onclick="doCopy(this)">📋 複製文案</button>' +
+        '<a class="btn-act" href="' + img + '" download="' + esc(d.zhName||'movie') + '.jpg">⬇ 儲存照片</a>' +
+      '</div>' +
+    '</div>';
+  document.getElementById('results').appendChild(card);
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderManga(d, img) {
+  const items = d.items || [];
+  if (!items.length) { showErr('沒辨識到漫畫，請再試一次'); return; }
+  const header = '新書來囉～～';
+  const fullPost = header + '\n' + items.map(it => '《#' + it.zhName + '》' + (it.volume||'') + '\n' + (it.summary||'')).join('\n\n');
+  const itemsHTML = items.map((it, i) =>
+    '<div class="manga-item"><div class="manga-item-no">第 ' + (i+1) + ' 本</div>' +
+    '<div class="post-box">' + esc('《#' + it.zhName + '》' + (it.volume||'') + '\n' + (it.summary||'')) + '</div></div>'
+  ).join('');
+  const card = document.createElement('div');
+  card.className = 'result-card';
+  card.innerHTML =
+    '<img class="result-img" src="' + img + '">' +
+    '<div class="result-body">' +
+      '<span class="result-badge manga">📚 漫畫 · ' + items.length + ' 本</span>' +
+      '<div class="post-box">' + esc(header) + '</div>' +
+      itemsHTML +
+      '<div class="actions">' +
+        '<button class="btn-act" data-copy="' + attr(fullPost) + '" onclick="doCopy(this)">📋 複製全部文案</button>' +
+        '<a class="btn-act" href="' + img + '" download="漫畫新書.jpg">⬇ 儲存照片</a>' +
+      '</div>' +
+    '</div>';
+  document.getElementById('results').appendChild(card);
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function doCopy(btn) {
+  const text = btn.getAttribute('data-copy');
+  const orig = btn.textContent;
+  navigator.clipboard.writeText(text).then(ok).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = text;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); ok();
+  });
+  function ok() { btn.textContent = '✓ 已複製！'; btn.classList.add('ok'); setTimeout(() => { btn.textContent = orig; btn.classList.remove('ok'); }, 2500); }
+}
+
+function showErr(msg) {
+  const b = document.getElementById('errBox');
+  b.textContent = '⚠️ ' + msg; b.classList.add('show'); b.style.display = 'block';
+}
+</script>
+</body>
+</html>
